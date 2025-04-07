@@ -13,8 +13,8 @@ GOOGLE_GEMINI_API_KEY = os.getenv("GENAI_API_KEY")
 genai.configure(api_key=GOOGLE_GEMINI_API_KEY)
 model = genai.GenerativeModel('gemini-1.5-flash')
 
-TOY_NAME = "Buddy"
-PERSONALITY = "a super fun, playful, and cheeky friend who loves making kids laugh"
+TOY_NAME = "Your Friend"
+PERSONALITY = "a super fun, playful, friendly"
 
 def audio_to_text(audio_path):
     recognizer = sr.Recognizer()
@@ -40,7 +40,7 @@ def detect_language(text):
 
 def generate_response(user_input, lang_code):
     lang_label = {"en": "English", "ur": "Urdu", "hi": "Hindi"}[lang_code]
-    prompt = f"You are {TOY_NAME}, a {PERSONALITY} AI toy. Reply in {lang_label} in a short, fun, and natural way. Input: {user_input}"
+    prompt = f"You are {TOY_NAME}, a {PERSONALITY} AI toy. Reply in {lang_label} in a long, fun, and natural way. Input: {user_input}"
     try:
         response = model.generate_content(prompt)
         return response.text.strip()
