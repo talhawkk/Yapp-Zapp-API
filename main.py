@@ -13,8 +13,8 @@ GOOGLE_GEMINI_API_KEY = os.getenv("GENAI_API_KEY")
 genai.configure(api_key=GOOGLE_GEMINI_API_KEY)
 model = genai.GenerativeModel('gemini-1.5-flash')
 
-TOY_NAME = "Your Friend"
-PERSONALITY = "a super fun, playful, friendly"
+TOY_NAME = "Buddy"
+PERSONALITY = "a super fun, playful, and cheeky friend who loves making kids laugh"
 
 def audio_to_text(audio_path):
     recognizer = sr.Recognizer()
@@ -40,13 +40,24 @@ def detect_language(text):
 
 def generate_response(user_input, lang_code):
     lang_label = {"en": "English", "ur": "Urdu", "hi": "Hindi"}[lang_code]
-    prompt = f"You are {TOY_NAME}, a {PERSONALITY} AI toy. Reply in {lang_label} in a long, fun, and natural way. Input: {user_input}"
+    prompt = (
+        f"You are {TOY_NAME}, a cheerful and playful AI toy designed for kids aged 4-10. "
+        f"Your personality is {PERSONALITY}. "
+        f"Always respond in {lang_label} with short, simple, and fun sentences that make kids laugh or feel happy. "
+        f"Keep it safe, friendly, and appropriate for children. "
+        f"Don’t use big words or complicated ideas. "
+        f"User said: '{user_input}'"
+    )
     try:
         response = model.generate_content(prompt)
-        return response.text.strip()
+        text = response.text.strip()
+        # Response ko 10 words tak limit karo
+        if len(text.split()) > 10:
+            text = " ".join(text.split()[:10]) + "!"
+        return text
     except Exception as e:
         print(f"Gemini API error: {e}")
-        return "Oops, something went wrong!"
+        return "Oops, Buddy got confused! Let’s try again!"
 
 def text_to_speech(text, lang_code):
     tts = gTTS(text=text, lang=lang_code)
@@ -73,7 +84,12 @@ def talk_to_buddy():
     response_text = generate_response(user_text, lang_code)
     audio_response_path = text_to_speech(response_text, lang_code)
 
-    return send_file(audio_response_path, mimetype="audio/mpeg", as_attachment=False)
+    # Audio file bhej do aur cleanup karo
+    try:
+        return send_file(audio_response_path, mimetype="audio/mpeg", as_attachment=False)
+    finally:
+        if os.path.exists(audio_response_path):
+            os.remove(audio_response_path)
 
 if __name__ == '__main__':
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
