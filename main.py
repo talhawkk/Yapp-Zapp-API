@@ -5,6 +5,7 @@ import google.generativeai as genai
 import os
 from dotenv import load_dotenv
 import uuid
+from pydub import AudioSegment
 
 # Setup
 app = Flask(__name__)
@@ -18,6 +19,13 @@ PERSONALITY = "a super fun, playful, and cheeky friend who loves making kids lau
 
 def audio_to_text(audio_path):
     recognizer = sr.Recognizer()
+    # Check if file is .m4a and convert to .wav
+    if audio_path.endswith('.m4a'):
+        audio = AudioSegment.from_file(audio_path, format="m4a")
+        wav_path = audio_path.replace('.m4a', '.wav')
+        audio.export(wav_path, format="wav")
+        audio_path = wav_path
+    
     with sr.AudioFile(audio_path) as source:
         audio = recognizer.record(source)
     try:
@@ -27,6 +35,11 @@ def audio_to_text(audio_path):
     except sr.RequestError as e:
         print(f"Error with recognition: {e}")
         return None
+    finally:
+        # Clean up converted .wav file if it was created
+        if audio_path.endswith('.wav') and 'temp_' in audio_path:
+            if os.path.exists(audio_path):
+                os.remove(audio_path)
 
 def detect_language(text):
     urdu_chars = set("ءآأؤإئبتثجحخدذرزسشصضطظعغفقكلمنهوىي")
@@ -72,7 +85,13 @@ def talk_to_buddy():
         return jsonify({'error': 'No audio file provided'}), 400
 
     file = request.files['audio']
-    temp_audio_path = f"temp_{uuid.uuid4().hex}.wav"
+    # Check file extension
+    file_ext = file.filename.rsplit('.', 1)[-1].lower()
+    if file_ext not in ['wav', 'm4a']:
+        return jsonify({'error': 'Unsupported file format. Use .wav or .m4a'}), 400
+
+    # Save the file with appropriate extension
+    temp_audio_path = f"temp_{uuid.uuid4().hex}.{file_ext}"
     file.save(temp_audio_path)
 
     user_text = audio_to_text(temp_audio_path)
