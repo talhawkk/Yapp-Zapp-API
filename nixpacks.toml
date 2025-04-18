@@ -1,2 +1,2 @@
 [phases.setup]
-aptPk castinggs = ['ffmpeg']
+aptPkgs = ['ffmpeg']
