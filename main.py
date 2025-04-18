@@ -11,11 +11,15 @@ import subprocess
 def convert_m4a_to_wav(m4a_path):
     wav_path = f"{uuid.uuid4().hex}.wav"
     try:
-        subprocess.run(['ffmpeg', '-i', m4a_path, wav_path], check=True)
+        result = subprocess.run(['ffmpeg', '-i', m4a_path, wav_path], capture_output=True, text=True)
+        if result.returncode != 0:
+            print("❌ FFmpeg error:", result.stderr)
+            return None
         return wav_path
-    except subprocess.CalledProcessError as e:
-        print("FFmpeg conversion error:", e)
+    except Exception as e:
+        print("❌ Exception in FFmpeg:", e)
         return None
+
 
 # Setup
 app = Flask(__name__)
@@ -79,35 +83,52 @@ def text_to_speech(text, lang_code):
 
 @app.route('/talk-to-buddy', methods=['POST'])
 def talk_to_buddy():
-    if 'audio' not in request.files:
-        return jsonify({'error': 'No audio file provided'}), 400
-
-    file = request.files['audio']
-    original_audio_path = f"temp_{uuid.uuid4().hex}.m4a"
-    file.save(original_audio_path)
-
-    # Convert to .wav using FFmpeg
-    converted_audio_path = convert_m4a_to_wav(original_audio_path)
-    os.remove(original_audio_path)
-
-    if not converted_audio_path:
-        return jsonify({'error': 'Audio conversion failed'}), 500
-
-    user_text = audio_to_text(converted_audio_path)
-    os.remove(converted_audio_path)
-
-    if not user_text:
-        return jsonify({'error': 'Could not understand audio'}), 400
-
-    lang_code = detect_language(user_text)
-    response_text = generate_response(user_text, lang_code)
-    audio_response_path = text_to_speech(response_text, lang_code)
-
     try:
+        if 'audio' not in request.files:
+            return jsonify({'error': 'No audio file provided'}), 400
+
+        file = request.files['audio']
+        original_audio_path = f"temp_{uuid.uuid4().hex}.m4a"
+        file.save(original_audio_path)
+
+        # Convert to .wav
+        converted_audio_path = convert_m4a_to_wav(original_audio_path)
+        os.remove(original_audio_path)
+
+        if not converted_audio_path:
+            print("❌ Audio conversion failed")
+            return jsonify({'error': 'Audio conversion failed'}), 500
+
+        user_text = audio_to_text(converted_audio_path)
+        os.remove(converted_audio_path)
+
+        print("🎙️ User said:", user_text)
+
+        if not user_text:
+            return jsonify({'error': 'Could not understand audio'}), 400
+
+        lang_code = detect_language(user_text)
+        print("🌐 Detected language:", lang_code)
+
+        response_text = generate_response(user_text, lang_code)
+        print("💬 Gemini response:", response_text)
+
+        audio_response_path = text_to_speech(response_text, lang_code)
+
+        if not os.path.exists(audio_response_path):
+            print("❌ TTS failed, audio file not created")
+            return jsonify({'error': 'Failed to generate audio response'}), 500
+
         return send_file(audio_response_path, mimetype="audio/mpeg", as_attachment=False)
+
+    except Exception as e:
+        print("❌ SERVER ERROR:", e)
+        return jsonify({'error': str(e)}), 500
     finally:
-        if os.path.exists(audio_response_path):
+        # Cleanup
+        if 'audio_response_path' in locals() and os.path.exists(audio_response_path):
             os.remove(audio_response_path)
+
 
 
 if __name__ == '__main__':
