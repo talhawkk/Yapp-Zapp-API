@@ -6,6 +6,17 @@ import os
 from dotenv import load_dotenv
 import uuid
 
+import subprocess
+
+def convert_m4a_to_wav(m4a_path):
+    wav_path = f"{uuid.uuid4().hex}.wav"
+    try:
+        subprocess.run(['ffmpeg', '-i', m4a_path, wav_path], check=True)
+        return wav_path
+    except subprocess.CalledProcessError as e:
+        print("FFmpeg conversion error:", e)
+        return None
+
 # Setup
 app = Flask(__name__)
 load_dotenv()
@@ -72,11 +83,18 @@ def talk_to_buddy():
         return jsonify({'error': 'No audio file provided'}), 400
 
     file = request.files['audio']
-    temp_audio_path = f"temp_{uuid.uuid4().hex}.wav"
-    file.save(temp_audio_path)
+    original_audio_path = f"temp_{uuid.uuid4().hex}.m4a"
+    file.save(original_audio_path)
 
-    user_text = audio_to_text(temp_audio_path)
-    os.remove(temp_audio_path)
+    # Convert to .wav using FFmpeg
+    converted_audio_path = convert_m4a_to_wav(original_audio_path)
+    os.remove(original_audio_path)
+
+    if not converted_audio_path:
+        return jsonify({'error': 'Audio conversion failed'}), 500
+
+    user_text = audio_to_text(converted_audio_path)
+    os.remove(converted_audio_path)
 
     if not user_text:
         return jsonify({'error': 'Could not understand audio'}), 400
@@ -85,12 +103,12 @@ def talk_to_buddy():
     response_text = generate_response(user_text, lang_code)
     audio_response_path = text_to_speech(response_text, lang_code)
 
-    # Audio file bhej do aur cleanup karo
     try:
         return send_file(audio_response_path, mimetype="audio/mpeg", as_attachment=False)
     finally:
         if os.path.exists(audio_response_path):
             os.remove(audio_response_path)
+
 
 if __name__ == '__main__':
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
