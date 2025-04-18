@@ -9,16 +9,9 @@ import uuid
 import subprocess
 
 def convert_m4a_to_wav(m4a_path):
-    wav_path = f"{uuid.uuid4().hex}.wav"
-    try:
-        result = subprocess.run(['ffmpeg', '-i', m4a_path, wav_path], capture_output=True, text=True)
-        if result.returncode != 0:
-            print("❌ FFmpeg error:", result.stderr)
-            return None
-        return wav_path
-    except Exception as e:
-        print("❌ Exception in FFmpeg:", e)
-        return None
+    print("⚠️ Skipped conversion on Railway: FFmpeg not installed")
+    return m4a_path  # just bypass, assume it's already .wav
+
 
 
 # Setup
