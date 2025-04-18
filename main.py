@@ -6,14 +6,6 @@ import os
 from dotenv import load_dotenv
 import uuid
 
-import subprocess
-
-def convert_m4a_to_wav(m4a_path):
-    print("⚠️ Skipped conversion on Railway: FFmpeg not installed")
-    return m4a_path  # just bypass, assume it's already .wav
-
-
-
 # Setup
 app = Flask(__name__)
 load_dotenv()
@@ -76,53 +68,29 @@ def text_to_speech(text, lang_code):
 
 @app.route('/talk-to-buddy', methods=['POST'])
 def talk_to_buddy():
+    if 'audio' not in request.files:
+        return jsonify({'error': 'No audio file provided'}), 400
+
+    file = request.files['audio']
+    temp_audio_path = f"temp_{uuid.uuid4().hex}.wav"
+    file.save(temp_audio_path)
+
+    user_text = audio_to_text(temp_audio_path)
+    os.remove(temp_audio_path)
+
+    if not user_text:
+        return jsonify({'error': 'Could not understand audio'}), 400
+
+    lang_code = detect_language(user_text)
+    response_text = generate_response(user_text, lang_code)
+    audio_response_path = text_to_speech(response_text, lang_code)
+
+    # Audio file bhej do aur cleanup karo
     try:
-        if 'audio' not in request.files:
-            return jsonify({'error': 'No audio file provided'}), 400
-
-        file = request.files['audio']
-        original_audio_path = f"temp_{uuid.uuid4().hex}.m4a"
-        file.save(original_audio_path)
-
-        # Convert to .wav
-        converted_audio_path = convert_m4a_to_wav(original_audio_path)
-        os.remove(original_audio_path)
-
-        if not converted_audio_path:
-            print("❌ Audio conversion failed")
-            return jsonify({'error': 'Audio conversion failed'}), 500
-
-        user_text = audio_to_text(converted_audio_path)
-        os.remove(converted_audio_path)
-
-        print("🎙️ User said:", user_text)
-
-        if not user_text:
-            return jsonify({'error': 'Could not understand audio'}), 400
-
-        lang_code = detect_language(user_text)
-        print("🌐 Detected language:", lang_code)
-
-        response_text = generate_response(user_text, lang_code)
-        print("💬 Gemini response:", response_text)
-
-        audio_response_path = text_to_speech(response_text, lang_code)
-
-        if not os.path.exists(audio_response_path):
-            print("❌ TTS failed, audio file not created")
-            return jsonify({'error': 'Failed to generate audio response'}), 500
-
         return send_file(audio_response_path, mimetype="audio/mpeg", as_attachment=False)
-
-    except Exception as e:
-        print("❌ SERVER ERROR:", e)
-        return jsonify({'error': str(e)}), 500
     finally:
-        # Cleanup
-        if 'audio_response_path' in locals() and os.path.exists(audio_response_path):
+        if os.path.exists(audio_response_path):
             os.remove(audio_response_path)
-
-
 
 if __name__ == '__main__':
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
