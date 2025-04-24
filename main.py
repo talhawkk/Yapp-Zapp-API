@@ -15,7 +15,7 @@ genai.configure(api_key=GOOGLE_GEMINI_API_KEY)
 model = genai.GenerativeModel('gemini-1.5-flash')
 
 TOY_NAME = "Jarvic"
-PERSONALITY = "a super fun, playful, and cheeky friend who loves making kids laugh"
+PERSONALITY = "a attractive, engaging, fun, playful, and cheeky friend who loves making kids laugh"
 
 def audio_to_text(audio_path):
     recognizer = sr.Recognizer()
@@ -85,12 +85,12 @@ def talk_to_buddy():
         return jsonify({'error': 'No audio file provided'}), 400
 
     file = request.files['audio']
-    # Check file extension
+    lang_param = request.form.get('language')  # 👈 Get optional language from POST form
+
     file_ext = file.filename.rsplit('.', 1)[-1].lower()
     if file_ext not in ['wav', 'm4a']:
         return jsonify({'error': 'Unsupported file format. Use .wav or .m4a'}), 400
 
-    # Save the file with appropriate extension
     temp_audio_path = f"temp_{uuid.uuid4().hex}.{file_ext}"
     file.save(temp_audio_path)
 
@@ -100,16 +100,18 @@ def talk_to_buddy():
     if not user_text:
         return jsonify({'error': 'Could not understand audio'}), 400
 
-    lang_code = detect_language(user_text)
+    # ✅ Use provided lang param or fallback to detection
+    lang_code = lang_param if lang_param in ['en', 'ur', 'hi'] else detect_language(user_text)
+
     response_text = generate_response(user_text, lang_code)
     audio_response_path = text_to_speech(response_text, lang_code)
 
-    # Audio file bhej do aur cleanup karo
     try:
         return send_file(audio_response_path, mimetype="audio/mpeg", as_attachment=False)
     finally:
         if os.path.exists(audio_response_path):
             os.remove(audio_response_path)
+
 
 if __name__ == '__main__':
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
