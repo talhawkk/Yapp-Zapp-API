@@ -81,12 +81,16 @@ def text_to_speech(text, lang_code):
     return filename
 
 @app.route('/talk-to-buddy', methods=['POST'])
+@app.route('/talk-to-buddy', methods=['POST'])
 def talk_to_buddy():
+    print("Received POST request at /talk-to-buddy")  # Debugging point
     if 'audio' not in request.files:
         return jsonify({'error': 'No audio file provided'}), 400
 
     file = request.files['audio']
+    print(f"Received audio file: {file.filename}")  # Debugging point
     lang_param = request.form.get('language')
+    print(f"Language parameter: {lang_param}")  # Debugging point
 
     file_ext = file.filename.rsplit('.', 1)[-1].lower()
     if file_ext not in ['wav', 'm4a']:
