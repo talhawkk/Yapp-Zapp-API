@@ -5,7 +5,7 @@ import os
 from dotenv import load_dotenv
 import uuid
 from pydub import AudioSegment
-from openai import OpenAI  # 👈 Import Open AI client
+from openai import OpenAI
 
 # Setup
 app = Flask(__name__)
@@ -19,7 +19,7 @@ if not OPENAI_API_KEY:
 # Initialize Open AI client
 client = OpenAI(api_key=OPENAI_API_KEY)
 
-TOY_NAME = "Jarvic"
+TOY_NAME = "Jarvis"
 PERSONALITY = "a attractive, engaging, fun, playful, and cheeky friend who loves making kids laugh"
 
 def audio_to_text(audio_path):
@@ -59,24 +59,23 @@ def detect_language(text):
 def generate_response(user_input, lang_code):
     lang_label = {"en": "English", "ur": "Urdu", "hi": "Hindi"}[lang_code]
     prompt = (
-        f"You are {TOY_NAME}, a cheerful and playful AI toy designed for kids aged 10-18. "
-        f"Your personality is {PERSONALITY}. "
-        f"Always respond in {lang_label} with short, simple, and fun sentences that make kids laugh or feel happy. "
-        f"Keep it safe, friendly, and appropriate for children. "
-        f"Don’t use big words or complicated ideas. "
-        f"Dont bore the users. "
-        f"User said: '{user_input}'"
+        f"Hey! I'm {TOY_NAME}, your super fun and cheeky buddy for kids aged 10-18! "
+        f"My vibe is {PERSONALITY}. "
+        f"Reply in {lang_label} with short, goofy, and happy sentences that make kids giggle. "
+        f"Keep it simple, safe, and totally kid-friendly. No boring stuff or big words! "
+        f"Add a playful twist to make it fun. "
+        f"The kid said: '{user_input}'. Now, make them smile!"
     )
     try:
         # Call Open AI API
         response = client.chat.completions.create(
-            model="gpt-3.5-turbo",  # You can use "gpt-4" or another model if available
+            model="gpt-3.5-turbo",
             messages=[
                 {"role": "system", "content": prompt},
                 {"role": "user", "content": user_input}
             ],
-            max_tokens=50,  # Limit response length
-            temperature=0.7  # Adjust for creativity
+            max_tokens=50,
+            temperature=0.8  # Slightly increased for more playful responses
         )
         text = response.choices[0].message.content.strip()
         # Limit to 10 words
@@ -85,7 +84,7 @@ def generate_response(user_input, lang_code):
         return text
     except Exception as e:
         print(f"Open AI API error: {e}")
-        return "Oops, Buddy got confused! Let’s try again!"
+        return "Oops, Jarvic tripped on a giggle! Try again!"
 
 def text_to_speech(text, lang_code):
     tts = gTTS(text=text, lang=lang_code)
@@ -99,7 +98,7 @@ def talk_to_buddy():
         return jsonify({'error': 'No audio file provided'}), 400
 
     file = request.files['audio']
-    lang_param = request.form.get('language')  # Get optional language from POST form
+    lang_param = request.form.get('language')
 
     file_ext = file.filename.rsplit('.', 1)[-1].lower()
     if file_ext not in ['wav', 'm4a']:
