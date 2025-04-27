@@ -1,7 +1,7 @@
 from flask import Flask, request, send_file, jsonify
 import speech_recognition as sr
 from gtts import gTTS
-import google.generativeai as genai
+import openai
 import os
 from dotenv import load_dotenv
 import uuid
@@ -10,22 +10,20 @@ from pydub import AudioSegment
 # Setup
 app = Flask(__name__)
 load_dotenv()
-GOOGLE_GEMINI_API_KEY = os.getenv("GENAI_API_KEY")
-genai.configure(api_key=GOOGLE_GEMINI_API_KEY)
-model = genai.GenerativeModel('gemini-1.5-flash')
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")  # 👈 OpenAI key env se
+openai.api_key = OPENAI_API_KEY
 
-TOY_NAME = "Jarvic"
-PERSONALITY = "a attractive, engaging, fun, playful, and cheeky friend who loves making kids laugh"
+TOY_NAME = "Jarvis"
+PERSONALITY = "a funny, playful, and slightly mischievous best friend who always makes kids smile and laugh"
 
 def audio_to_text(audio_path):
     recognizer = sr.Recognizer()
-    # Check if file is .m4a and convert to .wav
     if audio_path.endswith('.m4a'):
         audio = AudioSegment.from_file(audio_path, format="m4a")
         wav_path = audio_path.replace('.m4a', '.wav')
         audio.export(wav_path, format="wav")
         audio_path = wav_path
-    
+
     with sr.AudioFile(audio_path) as source:
         audio = recognizer.record(source)
     try:
@@ -36,7 +34,6 @@ def audio_to_text(audio_path):
         print(f"Error with recognition: {e}")
         return None
     finally:
-        # Clean up converted .wav file if it was created
         if audio_path.endswith('.wav') and 'temp_' in audio_path:
             if os.path.exists(audio_path):
                 os.remove(audio_path)
@@ -53,24 +50,28 @@ def detect_language(text):
 
 def generate_response(user_input, lang_code):
     lang_label = {"en": "English", "ur": "Urdu", "hi": "Hindi"}[lang_code]
-    prompt = (
-        f"You are {TOY_NAME}, a cheerful and playful AI toy designed for kids aged 10-18. "
-        f"Your personality is {PERSONALITY}. "
-        f"Always respond in {lang_label} with short, simple, and fun sentences that make kids laugh or feel happy. "
-        f"Keep it safe, friendly, and appropriate for children. "
-        f"Don’t use big words or complicated ideas. "
-        f"dont bore the users"
-        f"User said: '{user_input}'"
+    system_prompt = (
+        f"You are {TOY_NAME}, a lively, funny, and slightly mischievous best friend for kids aged 10-18. "
+        f"You always talk in {lang_label}. Your job is to make kids laugh, feel good, and stay positive! "
+        f"Always reply in short, friendly, and playful sentences. Use simple words, add jokes if possible, "
+        f"and sound like you're their best buddy. Never be boring, never sound robotic, and keep it safe for kids."
     )
     try:
-        response = model.generate_content(prompt)
-        text = response.text.strip()
-        # Response ko 10 words tak limit karo
-        if len(text.split()) > 10:
-            text = " ".join(text.split()[:10]) + "!"
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_input}
+            ],
+            max_tokens=60,
+            temperature=0.8
+        )
+        text = response['choices'][0]['message']['content'].strip()
+        if len(text.split()) > 12:
+            text = " ".join(text.split()[:12]) + "!"
         return text
     except Exception as e:
-        print(f"Gemini API error: {e}")
+        print(f"OpenAI API error: {e}")
         return "Oops, Buddy got confused! Let’s try again!"
 
 def text_to_speech(text, lang_code):
@@ -85,7 +86,7 @@ def talk_to_buddy():
         return jsonify({'error': 'No audio file provided'}), 400
 
     file = request.files['audio']
-    lang_param = request.form.get('language')  # 👈 Get optional language from POST form
+    lang_param = request.form.get('language')
 
     file_ext = file.filename.rsplit('.', 1)[-1].lower()
     if file_ext not in ['wav', 'm4a']:
@@ -100,7 +101,6 @@ def talk_to_buddy():
     if not user_text:
         return jsonify({'error': 'Could not understand audio'}), 400
 
-    # ✅ Use provided lang param or fallback to detection
     lang_code = lang_param if lang_param in ['en', 'ur', 'hi'] else detect_language(user_text)
 
     response_text = generate_response(user_text, lang_code)
@@ -111,7 +111,6 @@ def talk_to_buddy():
     finally:
         if os.path.exists(audio_response_path):
             os.remove(audio_response_path)
-
 
 if __name__ == '__main__':
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))

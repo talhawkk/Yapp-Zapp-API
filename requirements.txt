@@ -4,3 +4,4 @@ gTTS
 google-generativeai
 python-dotenv
 pydub
+openai
