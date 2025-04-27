@@ -83,8 +83,8 @@ def generate_response(user_input, lang_code):
         text = response.choices[0].message.content.strip()
         print(text)
         # Limit to 10 words
-        if len(text.split()) > 10:
-            text = " ".join(text.split()[:10]) + "!"
+        # if len(text.split()) > 10:
+        #     text = " ".join(text.split()[:10]) + "!"
         return text
     except Exception as e:
         print(f"Open AI API error: {e}")
