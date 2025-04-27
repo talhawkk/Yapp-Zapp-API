@@ -71,14 +71,15 @@ def generate_response(user_input, lang_code):
     try:
         # Call Open AI API
         response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
+            model="gpt-4",   # <-- yahan change kia
             messages=[
                 {"role": "system", "content": prompt},
                 {"role": "user", "content": user_input}
             ],
-            max_tokens=50,
-            temperature=0.8  # Slightly increased for more playful responses
+            max_tokens=300,
+            temperature=0.8
         )
+
         print(response)
         text = response.choices[0].message.content.strip()
         print(text)
