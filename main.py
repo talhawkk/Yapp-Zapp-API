@@ -80,9 +80,9 @@ def generate_response(user_input, lang_code):
             temperature=0.8
         )
 
-        print(response)
+        # print(response)
         text = response.choices[0].message.content.strip()
-        print(text)
+        # print(text)
         # Limit to 10 words
         # if len(text.split()) > 10:
         #     text = " ".join(text.split()[:10]) + "!"
