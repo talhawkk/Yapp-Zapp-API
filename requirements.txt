@@ -4,4 +4,4 @@ gTTS
 google-generativeai
 python-dotenv
 pydub
-openai
+openai==0.28
