@@ -79,7 +79,9 @@ def generate_response(user_input, lang_code):
             max_tokens=50,
             temperature=0.8  # Slightly increased for more playful responses
         )
+        print(response)
         text = response.choices[0].message.content.strip()
+        print(text)
         # Limit to 10 words
         if len(text.split()) > 10:
             text = " ".join(text.split()[:10]) + "!"
