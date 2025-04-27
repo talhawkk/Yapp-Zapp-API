@@ -18,6 +18,7 @@ PERSONALITY = "a funny, playful, and slightly mischievous best friend who always
 
 def audio_to_text(audio_path):
     recognizer = sr.Recognizer()
+    print(f"Processing audio file: {audio_path}")  # Debugging point
     if audio_path.endswith('.m4a'):
         audio = AudioSegment.from_file(audio_path, format="m4a")
         wav_path = audio_path.replace('.m4a', '.wav')
@@ -27,11 +28,14 @@ def audio_to_text(audio_path):
     with sr.AudioFile(audio_path) as source:
         audio = recognizer.record(source)
     try:
-        return recognizer.recognize_google(audio, language="ur-PK")
+        text = recognizer.recognize_google(audio, language="ur-PK")
+        print(f"Recognized text: {text}")  # Debugging point
+        return text
     except sr.UnknownValueError:
+        print("Audio not understood")  # Debugging point
         return None
     except sr.RequestError as e:
-        print(f"Error with recognition: {e}")
+        print(f"Error with recognition: {e}")  # Debugging point
         return None
     finally:
         if audio_path.endswith('.wav') and 'temp_' in audio_path:
@@ -68,7 +72,8 @@ def generate_response(user_input, lang_code):
         )
         text = response['choices'][0]['message']['content'].strip()
         if len(text.split()) > 12:
-            text = " ".join(text.split()[:12]) + "!"
+            text = " ".join(text.split()[:12]) + "!"  # Trim to 12 words if necessary
+        print(f"Generated response: {text}")  # Debugging point
         return text
     except Exception as e:
         print(f"OpenAI API error: {e}")
@@ -77,10 +82,10 @@ def generate_response(user_input, lang_code):
 def text_to_speech(text, lang_code):
     tts = gTTS(text=text, lang=lang_code)
     filename = f"response_{uuid.uuid4().hex}.mp3"
+    print(f"Saving speech to file: {filename}")  # Debugging point
     tts.save(filename)
     return filename
 
-@app.route('/talk-to-buddy', methods=['POST'])
 @app.route('/talk-to-buddy', methods=['POST'])
 def talk_to_buddy():
     print("Received POST request at /talk-to-buddy")  # Debugging point
@@ -103,14 +108,17 @@ def talk_to_buddy():
     os.remove(temp_audio_path)
 
     if not user_text:
+        print("No valid text extracted from audio")  # Debugging point
         return jsonify({'error': 'Could not understand audio'}), 400
 
     lang_code = lang_param if lang_param in ['en', 'ur', 'hi'] else detect_language(user_text)
+    print(f"Detected language: {lang_code}")  # Debugging point
 
     response_text = generate_response(user_text, lang_code)
     audio_response_path = text_to_speech(response_text, lang_code)
 
     try:
+        print(f"Sending response file: {audio_response_path}")  # Debugging point
         return send_file(audio_response_path, mimetype="audio/mpeg", as_attachment=False)
     finally:
         if os.path.exists(audio_response_path):
