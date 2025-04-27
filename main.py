@@ -60,7 +60,7 @@ def generate_response(user_input, lang_code):
     lang_label = {"en": "English", "ur": "Urdu", "hi": "Hindi"}[lang_code]
     prompt = (
         
-        f"A 4-5 year old asks: {user_input}. Answer as Yayp Zayp, a fun, modern girl in simple {lang_label} (1 line, max 35 words). Use a happy tone, stick to the question & to the point answers, ask question at the end of response to continue the conversation."
+        f"A 4-5 year old asks: {user_input}. Answer as Yayp Zayp, a fun, modern girl in simple {lang_label}. Use a happy tone, stick to the question & to the point answers, ask question at the end of response to continue the conversation."
         # f"Hey! I'm {TOY_NAME}, your super fun and cheeky buddy for kids aged 10-18! ""
         # f"My vibe is {PERSONALITY}. "
         # f"Reply in {lang_label} with short, goofy, and happy sentences that make kids giggle. "
