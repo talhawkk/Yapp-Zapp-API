@@ -1,7 +1,7 @@
 Flask
 SpeechRecognition
 gTTS
-google-generativeai
+# google-generativeai
 python-dotenv
 pydub
-openai==0.28
+openai

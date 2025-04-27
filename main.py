@@ -1,43 +1,47 @@
 from flask import Flask, request, send_file, jsonify
 import speech_recognition as sr
 from gtts import gTTS
-import openai
 import os
 from dotenv import load_dotenv
 import uuid
 from pydub import AudioSegment
+from openai import OpenAI  # 👈 Import Open AI client
 
 # Setup
 app = Flask(__name__)
 load_dotenv()
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")  # 👈 OpenAI key env se
-openai.api_key = OPENAI_API_KEY
 
-TOY_NAME = "Jarvis"
-PERSONALITY = "a funny, playful, and slightly mischievous best friend who always makes kids smile and laugh"
+# Load Open AI API key from environment (recommended for security)
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+if not OPENAI_API_KEY:
+    raise ValueError("OPENAI_API_KEY not found in environment variables")
+
+# Initialize Open AI client
+client = OpenAI(api_key=OPENAI_API_KEY)
+
+TOY_NAME = "Jarvic"
+PERSONALITY = "a attractive, engaging, fun, playful, and cheeky friend who loves making kids laugh"
 
 def audio_to_text(audio_path):
     recognizer = sr.Recognizer()
-    print(f"Processing audio file: {audio_path}")  # Debugging point
+    # Check if file is .m4a and convert to .wav
     if audio_path.endswith('.m4a'):
         audio = AudioSegment.from_file(audio_path, format="m4a")
         wav_path = audio_path.replace('.m4a', '.wav')
         audio.export(wav_path, format="wav")
         audio_path = wav_path
-
+    
     with sr.AudioFile(audio_path) as source:
         audio = recognizer.record(source)
     try:
-        text = recognizer.recognize_google(audio, language="ur-PK")
-        print(f"Recognized text: {text}")  # Debugging point
-        return text
+        return recognizer.recognize_google(audio, language="ur-PK")
     except sr.UnknownValueError:
-        print("Audio not understood")  # Debugging point
         return None
     except sr.RequestError as e:
-        print(f"Error with recognition: {e}")  # Debugging point
+        print(f"Error with recognition: {e}")
         return None
     finally:
+        # Clean up converted .wav file if it was created
         if audio_path.endswith('.wav') and 'temp_' in audio_path:
             if os.path.exists(audio_path):
                 os.remove(audio_path)
@@ -54,48 +58,48 @@ def detect_language(text):
 
 def generate_response(user_input, lang_code):
     lang_label = {"en": "English", "ur": "Urdu", "hi": "Hindi"}[lang_code]
-    system_prompt = (
-        f"You are {TOY_NAME}, a lively, funny, and slightly mischievous best friend for kids aged 10-18. "
-        f"You always talk in {lang_label}. Your job is to make kids laugh, feel good, and stay positive! "
-        f"Always reply in short, friendly, and playful sentences. Use simple words, add jokes if possible, "
-        f"and sound like you're their best buddy. Never be boring, never sound robotic, and keep it safe for kids."
+    prompt = (
+        f"You are {TOY_NAME}, a cheerful and playful AI toy designed for kids aged 10-18. "
+        f"Your personality is {PERSONALITY}. "
+        f"Always respond in {lang_label} with short, simple, and fun sentences that make kids laugh or feel happy. "
+        f"Keep it safe, friendly, and appropriate for children. "
+        f"Don’t use big words or complicated ideas. "
+        f"Dont bore the users. "
+        f"User said: '{user_input}'"
     )
     try:
-        response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
+        # Call Open AI API
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",  # You can use "gpt-4" or another model if available
             messages=[
-                {"role": "system", "content": system_prompt},
+                {"role": "system", "content": prompt},
                 {"role": "user", "content": user_input}
             ],
-            max_tokens=60,
-            temperature=0.8
+            max_tokens=50,  # Limit response length
+            temperature=0.7  # Adjust for creativity
         )
-        text = response['choices'][0]['message']['content'].strip()
-        if len(text.split()) > 12:
-            text = " ".join(text.split()[:12]) + "!"  # Trim to 12 words if necessary
-        print(f"Generated response: {text}")  # Debugging point
+        text = response.choices[0].message.content.strip()
+        # Limit to 10 words
+        if len(text.split()) > 10:
+            text = " ".join(text.split()[:10]) + "!"
         return text
     except Exception as e:
-        print(f"OpenAI API error: {e}")
+        print(f"Open AI API error: {e}")
         return "Oops, Buddy got confused! Let’s try again!"
 
 def text_to_speech(text, lang_code):
     tts = gTTS(text=text, lang=lang_code)
     filename = f"response_{uuid.uuid4().hex}.mp3"
-    print(f"Saving speech to file: {filename}")  # Debugging point
     tts.save(filename)
     return filename
 
 @app.route('/talk-to-buddy', methods=['POST'])
 def talk_to_buddy():
-    print("Received POST request at /talk-to-buddy")  # Debugging point
     if 'audio' not in request.files:
         return jsonify({'error': 'No audio file provided'}), 400
 
     file = request.files['audio']
-    print(f"Received audio file: {file.filename}")  # Debugging point
-    lang_param = request.form.get('language')
-    print(f"Language parameter: {lang_param}")  # Debugging point
+    lang_param = request.form.get('language')  # Get optional language from POST form
 
     file_ext = file.filename.rsplit('.', 1)[-1].lower()
     if file_ext not in ['wav', 'm4a']:
@@ -108,17 +112,15 @@ def talk_to_buddy():
     os.remove(temp_audio_path)
 
     if not user_text:
-        print("No valid text extracted from audio")  # Debugging point
         return jsonify({'error': 'Could not understand audio'}), 400
 
+    # Use provided lang param or fallback to detection
     lang_code = lang_param if lang_param in ['en', 'ur', 'hi'] else detect_language(user_text)
-    print(f"Detected language: {lang_code}")  # Debugging point
 
     response_text = generate_response(user_text, lang_code)
     audio_response_path = text_to_speech(response_text, lang_code)
 
     try:
-        print(f"Sending response file: {audio_response_path}")  # Debugging point
         return send_file(audio_response_path, mimetype="audio/mpeg", as_attachment=False)
     finally:
         if os.path.exists(audio_response_path):
