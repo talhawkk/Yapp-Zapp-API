@@ -5,3 +5,5 @@ gTTS
 python-dotenv
 pydub
 openai
+gunicorn
+uvicorn
