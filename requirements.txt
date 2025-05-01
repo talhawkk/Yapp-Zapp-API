@@ -5,5 +5,5 @@ gTTS
 python-dotenv
 pydub
 openai
-gunicorn
-uvicorn
+# gunicorn
+gunicorn==23.0.0
