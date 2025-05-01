@@ -7,3 +7,6 @@ pydub
 openai
 # gunicorn
 # gunicorn==23.0.0
+requests
+setuptools
+gunicorn
