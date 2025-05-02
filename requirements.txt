@@ -1,7 +1,7 @@
-Flask
-SpeechRecognition
-gTTS
-python-dotenv
-pydub
-openai
-gunicorn
+Flask==2.3.2
+SpeechRecognition==3.10.0
+gTTS==2.3.2
+python-dotenv==1.0.0
+pydub==0.25.1
+openai==1.30.1
+gunicorn==20.1.0
