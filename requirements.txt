@@ -3,5 +3,5 @@ SpeechRecognition==3.10.0
 gTTS==2.3.2
 python-dotenv==1.0.0
 pydub==0.25.1
-openai==1.30.1
+openai==1.14.0
 gunicorn==20.1.0
