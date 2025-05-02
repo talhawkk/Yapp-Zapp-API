@@ -1,9 +1,7 @@
 Flask
 SpeechRecognition
 gTTS
-# google-generativeai
 python-dotenv
 pydub
 openai
 gunicorn
-uvicorn
